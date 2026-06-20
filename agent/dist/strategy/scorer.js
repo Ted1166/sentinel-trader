@@ -5,10 +5,6 @@ const fearGreed_js_1 = require("./fearGreed.js");
 const momentum_js_1 = require("./momentum.js");
 const sentiment_js_1 = require("./sentiment.js");
 const logger_js_1 = require("../utils/logger.js");
-/**
- * Combines all three signal layers into a single composite score.
- * Weights: FearGreed=40%, Momentum=35%, Sentiment=25%
- */
 function scoreAllTokens(tokens, fearGreed, rsiMap) {
     logger_js_1.logger.debug("Scoring tokens", { count: tokens.length, fearGreed });
     const fgSignals = (0, fearGreed_js_1.scoreFearGreed)(tokens, fearGreed);
@@ -28,10 +24,9 @@ function scoreAllTokens(tokens, fearGreed, rsiMap) {
             momentum: mom,
             sentiment: sent,
             rsi: rsiMap[token.symbol] ?? 50,
-            rank: 0, // set after sorting
+            rank: 0,
         };
     });
-    // Sort descending
     scores.sort((a, b) => b.totalScore - a.totalScore);
     scores.forEach((s, i) => { s.rank = i + 1; });
     const topBuys = scores.filter((s) => s.totalScore >= 60).slice(0, 3);

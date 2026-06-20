@@ -18,9 +18,5 @@ export interface ScorerOutput {
     fearGreed: number;
     scoredAt: number;
 }
-/**
- * Combines all three signal layers into a single composite score.
- * Weights: FearGreed=40%, Momentum=35%, Sentiment=25%
- */
 export declare function scoreAllTokens(tokens: TokenSnapshot[], fearGreed: number, rsiMap: Record<string, number>): ScorerOutput;
 //# sourceMappingURL=scorer.d.ts.map

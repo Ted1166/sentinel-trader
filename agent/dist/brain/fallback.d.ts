@@ -10,9 +10,5 @@ export interface TradeDecision {
     strategyTag: string;
     reason: string;
 }
-/**
- * Deterministic fallback — used when AI is disabled or Claude call fails.
- * Simple rule: top scorer BUY if score >= 65 and CLEAR, else HOLD.
- */
 export declare function fallbackDecision(guardResult: GuardResult, scorer: ScorerOutput, portfolioUsd: number): TradeDecision;
 //# sourceMappingURL=fallback.d.ts.map

@@ -2,11 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkDrawdown = checkDrawdown;
 const config_js_1 = require("../config.js");
-/**
- * Compares current portfolio value against peak to compute drawdown.
- * portfolioUsd: current total value
- * peakUsd:      highest portfolio value seen this session
- */
 function checkDrawdown(portfolioUsd, peakUsd) {
     if (peakUsd <= 0) {
         return { verdict: config_js_1.Verdict.CLEAR, cautionFlag: 0, drawdownPct: 0, reason: "no peak yet" };

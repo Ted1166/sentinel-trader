@@ -18,7 +18,7 @@ export interface FundingRateData {
 export interface OHLCVData {
   symbol: string;
   open: number; high: number; low: number; close: number;
-  volume: number; timestamp: number;
+  volume: number; percentChange24h: number; timestamp: number;
 }
 
 export interface SocialData {
@@ -45,119 +45,85 @@ export interface CMCSnapshot {
 }
 
 const cmcAxios = axios.create({
-  baseURL: "https://pro-api.coinmarketcap.com/v1",
+  baseURL: "https://pro-api.coinmarketcap.com",
   headers: { "X-CMC_PRO_API_KEY": CMC.apiKey },
   timeout: 10_000,
 });
 
 export async function fetchFearGreed(): Promise<FearGreedData> {
   try {
-    const res = await cmcAxios.get("/fear-and-greed/latest");
+    const res = await cmcAxios.get("/v3/fear-and-greed/latest");
     const d = res.data?.data;
     return {
       value: Number(d?.value ?? 50),
       classification: String(d?.value_classification ?? "Neutral"),
       timestamp: Date.now(),
     };
-  } catch {
-    logger.warn("CMC fear-greed fetch failed, using neutral default");
+  } catch (err) {
+    logger.warn("CMC fear-greed fetch failed, using neutral default", {
+      status: axios.isAxiosError(err) ? err.response?.status : undefined,
+    });
     return { value: 50, classification: "Neutral", timestamp: Date.now() };
   }
 }
 
-export async function fetchFundingRates(symbols: string[]): Promise<Record<string, FundingRateData>> {
-  const result: Record<string, FundingRateData> = {};
-  try {
-    const res = await cmcAxios.get("/derivatives/exchange/assets", {
-      params: { symbol: symbols.join(","), convert: "USD" },
-    });
-    for (const item of (res.data?.data ?? []) as Record<string, unknown>[]) {
-      const sym = String(item["symbol"] ?? "");
-      if (sym) result[sym] = {
-        symbol: sym,
-        fundingRate: Number(item["funding_rate"] ?? 0),
-        nextFunding: Number(item["next_funding_time"] ?? 0),
-        exchange: String(item["exchange"] ?? "binance"),
-      };
-    }
-  } catch {
-    logger.warn("CMC funding rates fetch failed");
-  }
-  return result;
-}
-
 export async function fetchOHLCV(symbols: string[]): Promise<Record<string, OHLCVData>> {
   const result: Record<string, OHLCVData> = {};
+  if (symbols.length === 0) return result;
+
   try {
-    const res = await cmcAxios.get("/cryptocurrency/quotes/latest", {
+    const res = await cmcAxios.get("/v1/cryptocurrency/quotes/latest", {
       params: { symbol: symbols.join(","), convert: "USD" },
     });
     const data = res.data?.data ?? {};
     for (const sym of symbols) {
-      const q = data[sym]?.quote?.USD ?? {};
+      const entry = data[sym];
+      const q = entry?.quote?.USD;
+      if (!q) continue;
+
+      const price = Number(q.price ?? 0);
+      const pctChange24h = Number(q.percent_change_24h ?? 0);
+      const priorPrice = pctChange24h !== 0 ? price / (1 + pctChange24h / 100) : price;
+      const high = Math.max(price, priorPrice) * 1.005;
+      const low = Math.min(price, priorPrice) * 0.995;
+
       result[sym] = {
         symbol: sym,
-        open: Number(q.open_24h ?? q.price ?? 0),
-        high: Number(q.high_24h ?? q.price ?? 0),
-        low: Number(q.low_24h ?? q.price ?? 0),
-        close: Number(q.price ?? 0),
+        open: priorPrice,
+        high,
+        low,
+        close: price,
         volume: Number(q.volume_24h ?? 0),
+        percentChange24h: pctChange24h,
         timestamp: Date.now(),
       };
     }
-  } catch {
-    logger.warn("CMC OHLCV fetch failed");
+  } catch (err) {
+    logger.warn("CMC OHLCV fetch failed", {
+      status: axios.isAxiosError(err) ? err.response?.status : undefined,
+    });
+  }
+  return result;
+}
+
+export async function fetchFundingRates(symbols: string[]): Promise<Record<string, FundingRateData>> {
+  const result: Record<string, FundingRateData> = {};
+  for (const sym of symbols) {
+    result[sym] = { symbol: sym, fundingRate: 0, nextFunding: 0, exchange: "unavailable" };
   }
   return result;
 }
 
 export async function fetchSocial(symbols: string[]): Promise<Record<string, SocialData>> {
   const result: Record<string, SocialData> = {};
-  try {
-    const res = await cmcAxios.get("/cryptocurrency/trending/latest", {
-      params: { limit: 100 },
-    });
-    for (const item of (res.data?.data ?? []) as Record<string, unknown>[]) {
-      const sym = String(item["symbol"] ?? "");
-      if (sym && symbols.includes(sym)) {
-        result[sym] = {
-          symbol: sym,
-          sentimentScore: Number(item["sentiment_score"] ?? 0),
-          mentionCount: Number(item["mentions_count"] ?? 0),
-          trendingRank: Number(item["rank"] ?? 0),
-        };
-      }
-    }
-  } catch {
-    logger.warn("CMC social fetch failed");
-  }
   for (const sym of symbols) {
-    if (!result[sym]) result[sym] = { symbol: sym, sentimentScore: 0, mentionCount: 0, trendingRank: 0 };
+    result[sym] = { symbol: sym, sentimentScore: 0, mentionCount: 0, trendingRank: 0 };
   }
   return result;
 }
 
-export async function fetchKOLSignals(symbols: string[]): Promise<KOLSignal[]> {
-  const signals: KOLSignal[] = [];
-  try {
-    const res = await cmcAxios.get("/content/posts/top", {
-      params: { symbol: symbols.join(","), limit: 50 },
-    });
-    for (const item of (res.data?.data ?? []) as Record<string, unknown>[]) {
-      const sym = String(item["symbol"] ?? "");
-      if (!sym || !symbols.includes(sym)) continue;
-      const score = Number(item["bullish_score"] ?? 50);
-      signals.push({
-        symbol: sym,
-        sentiment: score > 60 ? "bullish" : score < 40 ? "bearish" : "neutral",
-        strength: score,
-        source: String(item["source"] ?? "cmc-kol"),
-      });
-    }
-  } catch {
-    logger.warn("CMC KOL signals fetch failed");
-  }
-  return signals;
+export async function fetchKOLSignals(_symbols: string[]): Promise<KOLSignal[]> {
+  return [];
 }
 
 export async function fetchCMCSnapshot(symbols: string[]): Promise<CMCSnapshot> {
@@ -169,6 +135,6 @@ export async function fetchCMCSnapshot(symbols: string[]): Promise<CMCSnapshot> 
     fetchSocial(symbols),
     fetchKOLSignals(symbols),
   ]);
-  logger.debug("CMC snapshot ready", { fearGreed: fearGreed.value });
+  logger.debug("CMC snapshot ready", { fearGreed: fearGreed.value, pricesFetched: Object.keys(ohlcv).length });
   return { fearGreed, fundingRates, ohlcv, social, kolSignals, fetchedAt: Date.now() };
 }

@@ -3,13 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.computeRSI = computeRSI;
 exports.checkRSI = checkRSI;
 const config_js_1 = require("../config.js");
-/**
- * Compute RSI from an array of close prices.
- * Uses standard 14-period RSI.
- */
 function computeRSI(closes, period = 14) {
     if (closes.length < period + 1)
-        return 50; // neutral default
+        return 50;
     let gains = 0;
     let losses = 0;
     for (let i = closes.length - period; i < closes.length; i++) {
@@ -26,10 +22,6 @@ function computeRSI(closes, period = 14) {
     const rs = avgGain / avgLoss;
     return 100 - 100 / (1 + rs);
 }
-/**
- * RSI guard — uses live price data approximation.
- * rsi: precomputed RSI value (0–100)
- */
 function checkRSI(rsi) {
     if (rsi >= config_js_1.RISK.rsiOverbought) {
         return {

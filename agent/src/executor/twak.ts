@@ -59,16 +59,28 @@ export async function getBalance(
 }
 
 export async function getPortfolioUsd(chain = "bsc"): Promise<number> {
-  try {
-    const { stdout } = await execAsync(
-      `twak wallet portfolio --chains ${chain} ${passwordFlag} --json`
-    );
-    const data = JSON.parse(stdout) as { totalUsd?: number; total_usd?: number };
-    return data.totalUsd ?? data.total_usd ?? 0;
-  } catch (err) {
-    logger.warn("TWAK portfolio check failed", { err });
-    return 0;
+  const cmd = `twak wallet portfolio --chains ${chain} ${passwordFlag} --json`;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const { stdout } = await execAsync(cmd);
+      const data = JSON.parse(stdout) as Array<{ usdValue?: number }> | { totalUsd?: number; total_usd?: number };
+
+      if (Array.isArray(data)) {
+        return data.reduce((sum, entry) => sum + (entry.usdValue ?? 0), 0);
+      }
+      return data.totalUsd ?? data.total_usd ?? 0;
+    } catch (err) {
+      if (attempt < 3) {
+        logger.debug(`TWAK portfolio check attempt ${attempt} failed, retrying`, { err });
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+        continue;
+      }
+      logger.warn("TWAK portfolio check failed after 3 attempts", { err });
+      return 0;
+    }
   }
+  return 0;
 }
 
 export async function executeSwap(params: TWAKSwapParams): Promise<TWAKSwapResult> {

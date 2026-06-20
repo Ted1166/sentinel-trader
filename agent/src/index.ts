@@ -15,25 +15,26 @@ import {
   executeSwap,
   registerForCompetition,
 } from "./executor/twak.js";
-import { TOKENS } from "./utils/tokens.js";
+import { TOKENS, PRIORITY_TOKENS } from "./utils/tokens.js";
 import { type Address } from "viem";
 import { type TradeDecision } from "./brain/fallback.js";
 
-let peakPortfolioUsd = 0;
-let cycleCount = 0;
-let dailyTradeCount = 0;
-let lastDayReset = new Date().getUTCDate();
+let peakPortfolioUsd     = 0;
+let cycleCount            = 0;
+let dailyTradeCount       = 0;
+let lastDayReset          = new Date().getUTCDate();
+let lastCycleCompletedAt  = 0;
 
 interface OpenPosition {
-  tradeId: bigint;
-  symbol: string;
-  address: Address;
-  direction: "BUY" | "SELL";
-  entryPrice: number;
-  sizeUsd: number;
+  tradeId:     bigint;
+  symbol:      string;
+  address:     Address;
+  direction:   "BUY" | "SELL";
+  entryPrice:  number;
+  sizeUsd:     number;
   stopLossPct: number;
   takeProfitPct: number;
-  openedAt: number;
+  openedAt:    number;
 }
 
 const openPositions: Map<string, OpenPosition> = new Map();
@@ -42,7 +43,7 @@ function checkDayReset(): void {
   const today = new Date().getUTCDate();
   if (today !== lastDayReset) {
     dailyTradeCount = 0;
-    lastDayReset = today;
+    lastDayReset    = today;
     logger.info("Daily trade count reset");
   }
 }
@@ -75,7 +76,7 @@ async function checkExits(snapshot: ReturnType<typeof buildSnapshot> extends Pro
       const usdcAddr = TOKENS.USDC.address;
       const swapResult = await executeSwap({
         fromToken: pos.address,
-        toToken: usdcAddr,
+        toToken:   usdcAddr,
         amountUsd: pos.sizeUsd,
         slippagePct: 0.5,
       });
@@ -107,7 +108,7 @@ async function runCycle(): Promise<void> {
 
   logger.info("Portfolio", {
     current: `$${portfolioUsd.toFixed(2)}`,
-    peak: `$${peakPortfolioUsd.toFixed(2)}`,
+    peak:    `$${peakPortfolioUsd.toFixed(2)}`,
     openPositions: openPositions.size,
   });
 
@@ -129,7 +130,7 @@ async function runCycle(): Promise<void> {
   );
 
   const topCandidate = scorerOutput.topBuys[0] ?? scorerOutput.ranked[0]!;
-  const topToken = snapshot.tokens.find((t) => t.symbol === topCandidate.symbol);
+  const topToken     = snapshot.tokens.find((t) => t.symbol === topCandidate.symbol);
 
   const guardResult = topToken
     ? runGuards(topToken, portfolioUsd, peakPortfolioUsd, rsiMap[topToken.symbol] ?? 50)
@@ -137,13 +138,25 @@ async function runCycle(): Promise<void> {
 
   logger.info("Guard verdict", {
     verdict: verdictLabel(guardResult.verdict),
-    reason: guardResult.reason,
-    flags: guardResult.cautionFlags.toString(2).padStart(5, "0"),
+    reason:  guardResult.reason,
+    flags:   guardResult.cautionFlags.toString(2).padStart(5, "0"),
   });
 
-  if (topToken) {
-    await writeOracleVerdict(topToken.address, guardResult);
+  let oracleWritesThisCycle = 0;
+  for (const symbol of PRIORITY_TOKENS) {
+    const token = snapshot.tokens.find((t) => t.symbol === symbol);
+    if (!token) continue;
+
+    const result = symbol === topToken?.symbol
+      ? guardResult
+      : runGuards(token, portfolioUsd, peakPortfolioUsd, rsiMap[symbol] ?? 50);
+
+    const hash = await writeOracleVerdict(token.address, result);
+    if (hash) oracleWritesThisCycle++;
   }
+  logger.info("Oracle writes complete", { written: oracleWritesThisCycle, watchlist: PRIORITY_TOKENS.length });
+
+  lastCycleCompletedAt = Date.now();
 
   if (guardResult.verdict === Verdict.HALT) {
     logger.warn("HALT verdict — protecting vaults, skipping trade");
@@ -167,11 +180,11 @@ async function runCycle(): Promise<void> {
   });
 
   logger.info("Trade decision", {
-    action: decision.action,
-    symbol: decision.symbol,
-    sizeUsd: decision.sizeUsd,
+    action:     decision.action,
+    symbol:     decision.symbol,
+    sizeUsd:    decision.sizeUsd,
     confidence: decision.confidence,
-    tag: decision.strategyTag,
+    tag:        decision.strategyTag,
   });
 
   if (decision.action !== "HOLD" && decision.symbol) {
@@ -190,7 +203,7 @@ async function runCycle(): Promise<void> {
 
     const swapResult = await executeSwap({
       fromToken: decision.action === "BUY" ? usdcAddr : tokenInfo.address,
-      toToken: decision.action === "BUY" ? tokenInfo.address : usdcAddr,
+      toToken:   decision.action === "BUY" ? tokenInfo.address : usdcAddr,
       amountUsd: Math.min(decision.sizeUsd, 500),
       slippagePct: 0.5,
     });
@@ -201,7 +214,7 @@ async function runCycle(): Promise<void> {
     }
 
     const tokenSnapshot = snapshot.tokens.find((t) => t.symbol === decision.symbol);
-    const entryPrice = tokenSnapshot?.price ?? 0;
+    const entryPrice    = tokenSnapshot?.price ?? 0;
 
     const { logHash } = await logTradeOpen(
       decision,
@@ -214,46 +227,57 @@ async function runCycle(): Promise<void> {
     if (logHash) {
       dailyTradeCount++;
       openPositions.set(decision.symbol, {
-        tradeId: 0n,
-        symbol: decision.symbol,
-        address: tokenInfo.address,
-        direction: decision.action as "BUY" | "SELL",
+        tradeId:      0n,
+        symbol:       decision.symbol,
+        address:      tokenInfo.address,
+        direction:    decision.action as "BUY" | "SELL",
         entryPrice,
-        sizeUsd: decision.sizeUsd,
-        stopLossPct: decision.stopLossPct,
-        takeProfitPct: decision.takeProfitPct,
-        openedAt: Date.now(),
+        sizeUsd:      decision.sizeUsd,
+        stopLossPct:  decision.stopLossPct,
+        takeProfitPct:decision.takeProfitPct,
+        openedAt:     Date.now(),
       });
 
       logger.info("Position opened", {
-        symbol: decision.symbol,
+        symbol:    decision.symbol,
         direction: decision.action,
-        size: `$${decision.sizeUsd}`,
-        entry: entryPrice,
-        swapTx: swapResult.txHash,
-        logTx: logHash,
+        size:      `$${decision.sizeUsd}`,
+        entry:     entryPrice,
+        swapTx:    swapResult.txHash,
+        logTx:     logHash,
       });
     }
   }
+
+  logger.info(`─── Cycle #${cycleCount} complete ───`, {
+    completedAt: new Date(lastCycleCompletedAt).toISOString(),
+    nextCycleIn: `${AGENT.cycleIntervalSecs}s`,
+  });
 }
 
 async function main(): Promise<void> {
   logger.info("SentinelTrader agent starting", {
     cycleInterval: AGENT.cycleIntervalSecs,
-    aiEnabled: AGENT.aiEnabled,
+    aiEnabled:     AGENT.aiEnabled,
   });
 
   await registerForCompetition();
 
   await runCycle();
 
-  setInterval(async () => {
-    try {
-      await runCycle();
-    } catch (err) {
-      logger.error("Cycle error", { err });
-    }
-  }, AGENT.cycleIntervalSecs * 1000);
+  const scheduleNextCycle = () => {
+    setTimeout(async () => {
+      try {
+        await runCycle();
+      } catch (err) {
+        logger.error("Cycle error", { err });
+      } finally {
+        scheduleNextCycle();
+      }
+    }, AGENT.cycleIntervalSecs * 1000);
+  };
+
+  scheduleNextCycle();
 }
 
 main().catch((err) => {

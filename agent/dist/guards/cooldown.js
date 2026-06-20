@@ -4,7 +4,6 @@ exports.recordStopLoss = recordStopLoss;
 exports.checkCooldown = checkCooldown;
 exports.clearCooldown = clearCooldown;
 const config_js_1 = require("../config.js");
-/** Track last stop-loss time per symbol */
 const lastStopLoss = new Map();
 function recordStopLoss(symbol) {
     lastStopLoss.set(symbol, Date.now());

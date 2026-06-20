@@ -2,10 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fallbackDecision = fallbackDecision;
 const config_js_1 = require("../config.js");
-/**
- * Deterministic fallback — used when AI is disabled or Claude call fails.
- * Simple rule: top scorer BUY if score >= 65 and CLEAR, else HOLD.
- */
 function fallbackDecision(guardResult, scorer, portfolioUsd) {
     if (guardResult.verdict === config_js_1.Verdict.HALT) {
         return {

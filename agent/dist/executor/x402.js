@@ -8,7 +8,6 @@ const child_process_1 = require("child_process");
 const util_1 = require("util");
 const logger_js_1 = require("../utils/logger.js");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
-/** Preview what an x402 endpoint would charge, without paying (read-only) */
 async function x402Quote(url) {
     try {
         const { stdout } = await execAsync(`twak x402 quote "${url}" --json`, { timeout: 15_000 });
@@ -20,10 +19,6 @@ async function x402Quote(url) {
         return null;
     }
 }
-/**
- * Make a paid request to a CMC Agent Hub x402-gated endpoint.
- * Signs payment automatically using the TWAK agent wallet.
- */
 async function x402Request(url) {
     try {
         logger_js_1.logger.debug("x402 request", { url });
@@ -40,7 +35,6 @@ async function x402Request(url) {
         throw err;
     }
 }
-/** Fetch Fear & Greed via CMC Agent Hub x402 endpoint */
 async function x402FearGreed(baseUrl) {
     try {
         const res = await x402Request(`${baseUrl}/fear-and-greed/latest`);
@@ -50,7 +44,6 @@ async function x402FearGreed(baseUrl) {
         return null;
     }
 }
-/** Fetch funding rates via CMC Agent Hub x402 endpoint */
 async function x402FundingRates(baseUrl, symbols) {
     try {
         const res = await x402Request(`${baseUrl}/derivatives/funding-rates?symbol=${symbols.join(",")}`);

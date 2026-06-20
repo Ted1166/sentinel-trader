@@ -9,21 +9,6 @@ const config_js_1 = require("../config.js");
 const logger_js_1 = require("../utils/logger.js");
 const onchain_js_1 = require("../monitor/onchain.js");
 const chain = config_js_1.BSC_CHAIN.id === 56 ? chains_1.bsc : chains_1.bscTestnet;
-/**
- * IMPORTANT — signing model:
- * GuardianVault.protectTokens() DOES move real funds (pulls a user's
- * pre-approved tokens into the vault via safeTransferFrom), so unlike
- * oracle.ts/tradeLog.ts this is not a pure bookkeeping write.
- *
- * However it still can't go through TWAK, since TWAK has no generic
- * contract-call command (only swap/transfer/erc20 approve are exposed).
- * It must be signed by the exact `guardian` address GuardianVault.sol
- * was deployed with — i.e. the same AGENT_WALLET used at deploy time
- * in Deploy.s.sol. This is a separate concern from the TWAK trading
- * wallet: GUARDIAN_PRIVATE_KEY corresponds on-chain to AGENT_WALLET
- * and should be funded with gas only, never the funds being protected
- * (those come from the user's own wallet via pre-approval).
- */
 function getGuardianWalletClient() {
     const pk = process.env.GUARDIAN_PRIVATE_KEY;
     if (!pk)
@@ -34,10 +19,6 @@ function getGuardianWalletClient() {
         transport: (0, viem_1.http)(config_js_1.BSC_CHAIN.rpcUrl),
     });
 }
-/**
- * Protect a user's tokens by moving them into GuardianVault.
- * Only callable when oracle reports the asset is HALTed.
- */
 async function protectUserTokens(user, token, amount, reason) {
     try {
         const client = getGuardianWalletClient();
@@ -55,16 +36,12 @@ async function protectUserTokens(user, token, amount, reason) {
         return null;
     }
 }
-/**
- * Batch protect all opted-in wallets on HALT.
- */
 async function batchProtectOnHalt(token, reason) {
     if (config_js_1.AGENT.protectedWallets.length === 0) {
         logger_js_1.logger.debug("No protected wallets configured, skipping vault batch");
         return null;
     }
     try {
-        // Check which wallets are opted in
         const params = [];
         for (const wallet of config_js_1.AGENT.protectedWallets) {
             const isProtected = await onchain_js_1.publicClient.readContract({
@@ -74,7 +51,6 @@ async function batchProtectOnHalt(token, reason) {
                 args: [wallet],
             });
             if (isProtected) {
-                // Use max uint128 — vault will take what's available
                 params.push({ user: wallet, token, amount: BigInt("1000000000000000000000") });
             }
         }

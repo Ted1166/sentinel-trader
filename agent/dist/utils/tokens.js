@@ -3,9 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PRIORITY_TOKENS = exports.STABLECOINS = exports.TOKEN_ADDRESSES = exports.TOKEN_SYMBOLS = exports.TOKENS = void 0;
 exports.tokenByAddress = tokenByAddress;
 exports.tokenBySymbol = tokenBySymbol;
-// ─── 149 eligible BEP-20 tokens from the competition list ────────────────────
-// Addresses are BSC mainnet BEP-20 contract addresses.
-// Stablecoins (USDT, USDC, DAI, etc.) included — agent can rotate into them.
 exports.TOKENS = {
     ETH: { symbol: "ETH", address: "0x2170Ed0880ac9A755fd29B2688956BD959F933F8", decimals: 18, cmcId: 1027 },
     USDT: { symbol: "USDT", address: "0x55d398326f99059fF775485246999027B3197955", decimals: 18, cmcId: 825 },
@@ -72,21 +69,15 @@ exports.TOKENS = {
     AIOZ: { symbol: "AIOZ", address: "0x33d08D8C7a168333a85285a68C0042b39fC3741D", decimals: 18, cmcId: 9104 },
     PEAQ: { symbol: "PEAQ", address: "0x97aFd1B7E15bD1E7781E2d3Bd9f10A02F69e2DB3", decimals: 18, cmcId: 28298 },
 };
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-/** All token symbols as an array */
 exports.TOKEN_SYMBOLS = Object.keys(exports.TOKENS);
-/** All token addresses as an array */
 exports.TOKEN_ADDRESSES = Object.values(exports.TOKENS).map((t) => t.address);
-/** Look up a token by address (case-insensitive) */
 function tokenByAddress(address) {
     const lower = address.toLowerCase();
     return Object.values(exports.TOKENS).find((t) => t.address.toLowerCase() === lower);
 }
-/** Look up a token by symbol */
 function tokenBySymbol(symbol) {
     return exports.TOKENS[symbol];
 }
-/** Stablecoin addresses — agent can park here during CAUTION/HALT */
 exports.STABLECOINS = [
     exports.TOKENS.USDT.address,
     exports.TOKENS.USDC.address,
@@ -94,7 +85,6 @@ exports.STABLECOINS = [
     exports.TOKENS.FDUSD.address,
     exports.TOKENS.TUSD.address,
 ];
-/** High-liquidity tokens — priority candidates for strategy signals */
 exports.PRIORITY_TOKENS = [
     "ETH", "LINK", "ADA", "DOT", "UNI", "AAVE", "CAKE",
     "ATOM", "INJ", "AVAX", "LDO", "PENDLE", "AXS", "SNX",

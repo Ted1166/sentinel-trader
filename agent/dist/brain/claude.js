@@ -30,7 +30,6 @@ Always respect HALT verdicts. Never exceed position size limits.`,
             .filter((b) => b.type === "text")
             .map((b) => b.text)
             .join("");
-        // Strip any accidental markdown fences
         const clean = text.replace(/```json|```/g, "").trim();
         const decision = JSON.parse(clean);
         logger_js_1.logger.info("Claude decision", {

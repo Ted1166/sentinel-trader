@@ -16,6 +16,7 @@ export interface OHLCVData {
     low: number;
     close: number;
     volume: number;
+    percentChange24h: number;
     timestamp: number;
 }
 export interface SocialData {
@@ -39,9 +40,9 @@ export interface CMCSnapshot {
     fetchedAt: number;
 }
 export declare function fetchFearGreed(): Promise<FearGreedData>;
-export declare function fetchFundingRates(symbols: string[]): Promise<Record<string, FundingRateData>>;
 export declare function fetchOHLCV(symbols: string[]): Promise<Record<string, OHLCVData>>;
+export declare function fetchFundingRates(symbols: string[]): Promise<Record<string, FundingRateData>>;
 export declare function fetchSocial(symbols: string[]): Promise<Record<string, SocialData>>;
-export declare function fetchKOLSignals(symbols: string[]): Promise<KOLSignal[]>;
+export declare function fetchKOLSignals(_symbols: string[]): Promise<KOLSignal[]>;
 export declare function fetchCMCSnapshot(symbols: string[]): Promise<CMCSnapshot>;
 //# sourceMappingURL=cmcFeed.d.ts.map

@@ -13,12 +13,6 @@ const logger_js_1 = require("../utils/logger.js");
 const execAsync = (0, util_1.promisify)(child_process_1.exec);
 const TWAK_PASSWORD = process.env.TWAK_WALLET_PASSWORD ?? "";
 const passwordFlag = TWAK_PASSWORD ? `--password "${TWAK_PASSWORD}"` : "";
-/**
- * TWAK executor — wraps the real Trust Wallet Agent Kit CLI (v0.19.1).
- * All signing is self-custody local (keys never leave the machine).
- * Real CLI verified via `twak --help` / `twak <cmd> --help`.
- */
-/** Get agent wallet address for a given chain */
 async function getAgentWallet(chain = "bsc") {
     try {
         const { stdout } = await execAsync(`twak wallet address --chain ${chain} --json`);
@@ -30,7 +24,6 @@ async function getAgentWallet(chain = "bsc") {
         return "";
     }
 }
-/** Get balance for a specific token (or native) on a chain */
 async function getBalance(tokenAddress, chain = "bsc", walletAddress) {
     try {
         const tokenFlag = tokenAddress ? `--token ${tokenAddress}` : "";
@@ -44,22 +37,29 @@ async function getBalance(tokenAddress, chain = "bsc", walletAddress) {
         return { symbol: "UNKNOWN", balance: "0", usdValue: 0 };
     }
 }
-/** Get total portfolio value in USD across chains (or filtered to one chain) */
 async function getPortfolioUsd(chain = "bsc") {
-    try {
-        const { stdout } = await execAsync(`twak wallet portfolio --chains ${chain} ${passwordFlag} --json`);
-        const data = JSON.parse(stdout);
-        return data.totalUsd ?? data.total_usd ?? 0;
+    const cmd = `twak wallet portfolio --chains ${chain} ${passwordFlag} --json`;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const { stdout } = await execAsync(cmd);
+            const data = JSON.parse(stdout);
+            if (Array.isArray(data)) {
+                return data.reduce((sum, entry) => sum + (entry.usdValue ?? 0), 0);
+            }
+            return data.totalUsd ?? data.total_usd ?? 0;
+        }
+        catch (err) {
+            if (attempt < 3) {
+                logger_js_1.logger.debug(`TWAK portfolio check attempt ${attempt} failed, retrying`, { err });
+                await new Promise((r) => setTimeout(r, 1000 * attempt));
+                continue;
+            }
+            logger_js_1.logger.warn("TWAK portfolio check failed after 3 attempts", { err });
+            return 0;
+        }
     }
-    catch (err) {
-        logger_js_1.logger.warn("TWAK portfolio check failed", { err });
-        return 0;
-    }
+    return 0;
 }
-/**
- * Execute a swap via TWAK with self-custody local signing.
- * Real syntax: twak swap <amountOrFrom> <fromOrTo> [to] --usd <amount> --chain bsc
- */
 async function executeSwap(params) {
     const { fromToken, toToken, amountUsd, slippagePct = 0.5 } = params;
     logger_js_1.logger.info("Executing TWAK swap", { from: fromToken, to: toToken, amountUsd });
@@ -93,7 +93,6 @@ async function executeSwap(params) {
         return { txHash: "", fromAmt: "0", toAmt: "0", success: false };
     }
 }
-/** Preview a swap quote without executing (no password needed) */
 async function quoteSwap(fromToken, toToken, amountUsd) {
     try {
         const cmd = `twak swap ${fromToken} ${toToken} --usd ${amountUsd} --chain bsc --quote-only --json`;
@@ -109,7 +108,6 @@ async function quoteSwap(fromToken, toToken, amountUsd) {
         return null;
     }
 }
-/** Register agent in the BNB Hack competition contract via TWAK */
 async function registerForCompetition() {
     try {
         logger_js_1.logger.info("Registering agent in competition via TWAK CLI");
@@ -130,7 +128,6 @@ async function registerForCompetition() {
         return "";
     }
 }
-/** Check competition registration status */
 async function checkCompetitionStatus() {
     try {
         const { stdout } = await execAsync("twak compete status --json", { timeout: 15_000 });

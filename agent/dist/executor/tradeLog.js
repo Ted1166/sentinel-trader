@@ -8,16 +8,6 @@ const chains_1 = require("viem/chains");
 const config_js_1 = require("../config.js");
 const logger_js_1 = require("../utils/logger.js");
 const chain = config_js_1.BSC_CHAIN.id === 56 ? chains_1.bsc : chains_1.bscTestnet;
-/**
- * Same dual-key model as oracle.ts — see comment there.
- * TradeLogger.sol's openTrade()/closeTrade() are bookkeeping writes only
- * (PnL proof for judges), never the actual fund-moving transaction.
- * The real swap is always executed through TWAK first; this just records
- * the result on-chain using the disposable logging wallet.
- *
- * LOGGER_PRIVATE_KEY must be the `logger` address set on TradeLogger.sol
- * at deploy time, funded with gas money only.
- */
 function getLoggerWalletClient() {
     const pk = process.env.LOGGER_PRIVATE_KEY;
     if (!pk)
@@ -28,11 +18,7 @@ function getLoggerWalletClient() {
         transport: (0, viem_1.http)(config_js_1.BSC_CHAIN.rpcUrl),
     });
 }
-const priceToUint128 = (price) => BigInt(Math.round(price * 1e9)) * BigInt(1e9); // 18 decimal fixed point
-/**
- * Open a trade on TradeLogger.sol — immutable on-chain PnL proof.
- * Call this AFTER the real swap has already executed via TWAK.
- */
+const priceToUint128 = (price) => BigInt(Math.round(price * 1e9)) * BigInt(1e9);
 async function logTradeOpen(decision, assetAddress, entryPrice, guardVerdict, swapTxHash) {
     try {
         const client = getLoggerWalletClient();
@@ -63,10 +49,6 @@ async function logTradeOpen(decision, assetAddress, entryPrice, guardVerdict, sw
         return { logHash: null };
     }
 }
-/**
- * Close a trade on TradeLogger.sol.
- * Call this AFTER the real exit swap has already executed via TWAK.
- */
 async function logTradeClose(tradeId, exitPrice, exitTxHash, stoppedOut) {
     try {
         const client = getLoggerWalletClient();

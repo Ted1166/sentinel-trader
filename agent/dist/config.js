@@ -15,59 +15,83 @@ exports.CONTRACTS = {
     agentWallet: (process.env.AGENT_WALLET ?? ""),
 };
 exports.RISK_GUARD_ORACLE_ABI = [
-    { name: "recordVerdict", type: "function", stateMutability: "nonpayable",
+    {
+        name: "recordVerdict", type: "function", stateMutability: "nonpayable",
         inputs: [
             { name: "asset", type: "address" }, { name: "verdict", type: "uint8" },
             { name: "cautionFlags", type: "uint8" }, { name: "drawdownBps", type: "int16" },
             { name: "atrMultiple10", type: "uint16" }, { name: "rsi", type: "uint8" },
             { name: "spreadBps", type: "uint16" }, { name: "reason", type: "string" },
-        ], outputs: [] },
-    { name: "isHalted", type: "function", stateMutability: "view",
-        inputs: [{ name: "asset", type: "address" }], outputs: [{ name: "", type: "bool" }] },
-    { name: "latestRecord", type: "function", stateMutability: "view",
+        ], outputs: []
+    },
+    {
+        name: "isHalted", type: "function", stateMutability: "view",
+        inputs: [{ name: "asset", type: "address" }], outputs: [{ name: "", type: "bool" }]
+    },
+    {
+        name: "latestRecord", type: "function", stateMutability: "view",
         inputs: [{ name: "asset", type: "address" }],
-        outputs: [{ name: "", type: "tuple", components: [
+        outputs: [{
+                name: "", type: "tuple", components: [
                     { name: "verdict", type: "uint8" }, { name: "cautionFlags", type: "uint8" },
                     { name: "drawdownBps", type: "int16" }, { name: "atrMultiple10", type: "uint16" },
                     { name: "rsi", type: "uint8" }, { name: "spreadBps", type: "uint16" },
                     { name: "timestamp", type: "uint32" }, { name: "blockNumber", type: "uint64" },
                     { name: "reason", type: "string" },
-                ] }] },
+                ]
+            }]
+    },
 ];
 exports.TRADE_LOGGER_ABI = [
-    { name: "openTrade", type: "function", stateMutability: "nonpayable",
+    {
+        name: "openTrade", type: "function", stateMutability: "nonpayable",
         inputs: [
             { name: "asset", type: "address" }, { name: "direction", type: "uint8" },
             { name: "entryPrice", type: "uint128" }, { name: "sizeUsd", type: "uint128" },
             { name: "confidence", type: "uint8" }, { name: "guardVerdict", type: "uint8" },
             { name: "entryTxHash", type: "bytes32" }, { name: "strategyTag", type: "string" },
             { name: "reason", type: "string" },
-        ], outputs: [{ name: "id", type: "uint64" }] },
-    { name: "closeTrade", type: "function", stateMutability: "nonpayable",
+        ], outputs: [{ name: "id", type: "uint64" }]
+    },
+    {
+        name: "closeTrade", type: "function", stateMutability: "nonpayable",
         inputs: [
             { name: "id", type: "uint64" }, { name: "exitPrice", type: "uint128" },
             { name: "exitTxHash", type: "bytes32" }, { name: "stoppedOut", type: "bool" },
-        ], outputs: [] },
-    { name: "totalTrades", type: "function", stateMutability: "view",
-        inputs: [], outputs: [{ name: "", type: "uint64" }] },
-    { name: "competitionPnlBps", type: "function", stateMutability: "view",
-        inputs: [], outputs: [{ name: "total", type: "int256" }] },
+        ], outputs: []
+    },
+    {
+        name: "totalTrades", type: "function", stateMutability: "view",
+        inputs: [], outputs: [{ name: "", type: "uint64" }]
+    },
+    {
+        name: "competitionPnlBps", type: "function", stateMutability: "view",
+        inputs: [], outputs: [{ name: "total", type: "int256" }]
+    },
 ];
 exports.GUARDIAN_VAULT_ABI = [
-    { name: "protectTokens", type: "function", stateMutability: "nonpayable",
+    {
+        name: "protectTokens", type: "function", stateMutability: "nonpayable",
         inputs: [
             { name: "user", type: "address" }, { name: "token", type: "address" },
             { name: "amount", type: "uint128" }, { name: "reason", type: "string" },
-        ], outputs: [] },
-    { name: "batchProtectTokens", type: "function", stateMutability: "nonpayable",
+        ], outputs: []
+    },
+    {
+        name: "batchProtectTokens", type: "function", stateMutability: "nonpayable",
         inputs: [
-            { name: "params", type: "tuple[]", components: [
+            {
+                name: "params", type: "tuple[]", components: [
                     { name: "user", type: "address" }, { name: "token", type: "address" }, { name: "amount", type: "uint128" },
-                ] },
+                ]
+            },
             { name: "reason", type: "string" },
-        ], outputs: [] },
-    { name: "isProtected", type: "function", stateMutability: "view",
-        inputs: [{ name: "user", type: "address" }], outputs: [{ name: "", type: "bool" }] },
+        ], outputs: []
+    },
+    {
+        name: "isProtected", type: "function", stateMutability: "view",
+        inputs: [{ name: "user", type: "address" }], outputs: [{ name: "", type: "bool" }]
+    },
 ];
 exports.RISK = {
     maxPositionPct: Number(process.env.MAX_POSITION_PCT ?? 20),
