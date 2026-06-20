@@ -1,0 +1,1 @@
+{"version":3,"file":"oracle.d.ts","sourceRoot":"","sources":["../../src/executor/oracle.ts"],"names":[],"mappings":"AAAA,OAAO,EAA4B,KAAK,OAAO,EAAE,KAAK,IAAI,EAAE,MAAM,MAAM,CAAC;AAIzE,OAAO,EAAE,KAAK,WAAW,EAAE,MAAM,yBAAyB,CAAC;AA8B3D;;;GAGG;AACH,wBAAsB,kBAAkB,CACtC,KAAK,EAAQ,OAAO,EACpB,WAAW,EAAE,WAAW,GACvB,OAAO,CAAC,IAAI,GAAG,IAAI,CAAC,CA0BtB"}

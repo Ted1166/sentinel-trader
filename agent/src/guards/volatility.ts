@@ -1,0 +1,61 @@
+import { Verdict, CautionFlag, RISK, type VerdictType } from "../config.js";
+
+export interface VolatilityResult {
+  verdict: VerdictType;
+  cautionFlag: number;
+  atr: number;
+  atrMultiple: number;
+  reason: string;
+}
+
+export function computeATR(highs: number[], lows: number[], closes: number[]): number {
+  const period = Math.min(14, highs.length);
+  if (period < 2) return 0;
+
+  let atrSum = 0;
+  for (let i = 1; i < period; i++) {
+    const tr = Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i - 1]),
+      Math.abs(lows[i] - closes[i - 1])
+    );
+    atrSum += tr;
+  }
+  return atrSum / (period - 1);
+}
+
+export function checkVolatility(
+  high24h: number,
+  low24h: number,
+  price: number
+): VolatilityResult {
+  if (price <= 0) {
+    return { verdict: Verdict.CLEAR, cautionFlag: 0, atr: 0, atrMultiple: 0, reason: "no price data" };
+  }
+
+  const atr = (high24h - low24h);
+  const atrMultiple = atr > 0 ? price / atr : 0;
+
+  const volatilityRatio = atr / price;
+
+  if (volatilityRatio >= 0.40) {
+    return {
+      verdict: Verdict.HALT, cautionFlag: CautionFlag.VOLATILITY,
+      atr, atrMultiple,
+      reason: `volatility ${(volatilityRatio * 100).toFixed(1)}% of price >= halt threshold 40%`,
+    };
+  }
+
+  if (volatilityRatio >= 0.20) {
+    return {
+      verdict: Verdict.CAUTION, cautionFlag: CautionFlag.VOLATILITY,
+      atr, atrMultiple,
+      reason: `volatility ${(volatilityRatio * 100).toFixed(1)}% of price >= caution threshold 20%`,
+    };
+  }
+
+  return {
+    verdict: Verdict.CLEAR, cautionFlag: 0, atr, atrMultiple,
+    reason: `volatility ${(volatilityRatio * 100).toFixed(1)}% within limits`,
+  };
+}

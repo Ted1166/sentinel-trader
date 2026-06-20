@@ -15,6 +15,7 @@ contract DeployScript is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address agentWallet = vm.envAddress("AGENT_WALLET");
+        address loggerWallet = vm.envAddress("LOGGER_WALLET");
 
         uint32 compStart = uint32(vm.envOr("COMP_START", uint256(DEFAULT_COMP_START)));
         uint32 compEnd = uint32(vm.envOr("COMP_END", uint256(DEFAULT_COMP_END)));
@@ -27,13 +28,13 @@ contract DeployScript is Script {
 
         vm.startBroadcast(deployerKey);
 
-        RiskGuardOracle oracle = new RiskGuardOracle(agentWallet);
-        console2.log("RiskGuardOracle:", address(oracle));
+        RiskGuardOracle oracle = new RiskGuardOracle(loggerWallet);
+        console2.log("RiskGuardOracle  :", address(oracle));
 
-        TradeLogger tradeLogger = new TradeLogger(agentWallet, compStart, compEnd);
+        TradeLogger tradeLogger = new TradeLogger(loggerWallet, compStart, compEnd);
         console2.log("TradeLogger:", address(tradeLogger));
 
-        GuardianVault vault = new GuardianVault(agentWallet, address(oracle));
+        GuardianVault vault = new GuardianVault(loggerWallet, address(oracle));
         console2.log("GuardianVault:", address(vault));
 
         CompetitionRegistry registry = new CompetitionRegistry(
@@ -53,5 +54,8 @@ contract DeployScript is Script {
         console2.log("GUARDIAN_VAULT_ADDRESS=%s", address(vault));
         console2.log("COMPETITION_REGISTRY_ADDRESS=%s", address(registry));
         console2.log("AGENT_WALLET=%s", agentWallet);
+        console2.log("LOGGER_WALLET=%s", loggerWallet);
+        console2.log("# Set LOGGER_PRIVATE_KEY and GUARDIAN_PRIVATE_KEY in agent/.env");
+        console2.log("# to the private key for LOGGER_WALLET shown above (same key, two names).");
     }
 }
