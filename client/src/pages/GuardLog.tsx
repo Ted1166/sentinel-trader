@@ -10,7 +10,7 @@ export function GuardLog() {
     );
 
     const { records, isLoading } = useRecentRecords(selected.address, 50);
-    const { data: txHashes } = useVerdictTxHashes(selected.address);
+    const { data: txHashes, isLoading: txLoading } = useVerdictTxHashes(selected.address);
 
     return (
         <div className="space-y-6">
@@ -92,8 +92,10 @@ export function GuardLog() {
                                                     >
                                                         {shortHash(txHash)}
                                                     </a>
+                                                ) : txLoading ? (
+                                                    <span className="text-text-secondary">…</span>
                                                 ) : (
-                                                    <span className="text-text-secondary">loading…</span>
+                                                    <span className="text-text-secondary" title="Outside the indexed block range">—</span>
                                                 )}
                                             </td>
                                             <td className="py-2.5 text-xs text-text-secondary">{formatTimeAgo(r.timestamp)}</td>

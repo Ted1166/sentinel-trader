@@ -185,22 +185,41 @@ export function useVerdictTxHashes(asset: Address, lookbackBlocks = 5000) {
                 ? latestBlock - BigInt(lookbackBlocks)
                 : 0n;
 
-            const logs = await publicClient.getLogs({
-                address: CONTRACTS.riskGuardOracle,
-                event: VERDICT_EVENT,
-                args: { asset },
-                fromBlock,
-                toBlock: latestBlock,
-            });
+            try {
+                const logs = await publicClient.getLogs({
+                    address: CONTRACTS.riskGuardOracle,
+                    event: VERDICT_EVENT,
+                    args: { asset },
+                    fromBlock,
+                    toBlock: latestBlock,
+                });
 
-            const map = new Map<string, string>();
-            for (const log of logs) {
-                map.set(log.blockNumber.toString(), log.transactionHash);
+                const map = new Map<string, string>();
+                for (const log of logs) {
+                    map.set(log.blockNumber.toString(), log.transactionHash);
+                }
+                return map;
+            } catch (err) {
+                console.warn("getLogs with full event filter failed, retrying with asset-only filter", err);
+                const logs = await publicClient.getLogs({
+                    address: CONTRACTS.riskGuardOracle,
+                    fromBlock,
+                    toBlock: latestBlock,
+                });
+
+                const map = new Map<string, string>();
+                for (const log of logs) {
+                    const topicAsset = log.topics[1];
+                    if (topicAsset && topicAsset.toLowerCase().includes(asset.slice(2).toLowerCase())) {
+                        map.set(log.blockNumber.toString(), log.transactionHash);
+                    }
+                }
+                return map;
             }
-            return map;
         },
         enabled: !!publicClient && !!asset && !!CONTRACTS.riskGuardOracle,
         refetchInterval: POLL_INTERVAL_MS,
         staleTime: POLL_INTERVAL_MS,
+        retry: 1,
     });
 }
