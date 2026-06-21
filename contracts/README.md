@@ -1,66 +1,32 @@
-## Foundry
+# SentinelTrader - contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Foundry project. Solidity 0.8.28, 4 contracts, 45 tests.
 
-Foundry consists of:
+## Setup
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```bash
+forge install foundry-rs/forge-std
+forge install OpenZeppelin/openzeppelin-contracts
+forge build
+forge test -vv
 ```
 
-### Test
+## Contracts
 
-```shell
-$ forge test
+| Contract | Purpose |
+|---|---|
+| `RiskGuardOracle.sol` | On-chain verdict ledger — 50-entry ring buffer per asset, emits `HaltTriggered` |
+| `TradeLogger.sol` | Immutable trade log — entry/exit/PnL, `competitionPnlBps()` for aggregate scoring |
+| `GuardianVault.sol` | Opt-in emergency fund protection — guardian can only move funds *in*, never out |
+| `CompetitionRegistry.sol` | Agent identity + strategy metadata, on-chain |
+
+## Deploy
+
+```bash
+cp .env.example .env   # fill in deployer key, two wallet addresses, RPC, API key
+forge script script/Deploy.s.sol --rpc-url <network> --broadcast --verify -vvvv
 ```
 
-### Format
+Note the two-wallet model in `.env.example`: `AGENT_WALLET` (your self-custody trading wallet, recorded as the public identity) is distinct from `LOGGER_WALLET` (a separate gas-only wallet that becomes the on-chain `guardian`/`logger` role on all 3 contracts). See the root README's Security notes for why.
 
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Copy the deployed addresses from the script output into both `agent/.env` and `client/.env`.

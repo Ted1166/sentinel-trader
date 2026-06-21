@@ -4328,3 +4328,14 @@
     "stderr": "Note: --password is visible in shell history. Use `twak wallet keychain save` or TWAK_WALLET_PASSWORD instead.\n"
   }
 }
+2026-06-21 12:46:46 [[31merror[39m] Competition registration failed
+{
+  "err": {
+    "code": 1,
+    "killed": false,
+    "signal": null,
+    "cmd": "twak compete register --password \"Adams@4466\" --json",
+    "stdout": "{\n  \"error\": \"Empty return data for registrationDeadline — call likely reverted or contract has no code at address\",\n  \"errorCode\": \"VALIDATION_ERROR\"\n}\n",
+    "stderr": "Note: --password is visible in shell history. Use `twak wallet keychain save` or TWAK_WALLET_PASSWORD instead.\n"
+  }
+}

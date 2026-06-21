@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { createServer } from "http";
 import { AGENT, Verdict } from "./config.js";
 import { logger } from "./utils/logger.js";
 import { buildSnapshot } from "./monitor/snapshot.js";
@@ -19,22 +20,22 @@ import { TOKENS, PRIORITY_TOKENS } from "./utils/tokens.js";
 import { type Address } from "viem";
 import { type TradeDecision } from "./brain/fallback.js";
 
-let peakPortfolioUsd     = 0;
-let cycleCount            = 0;
-let dailyTradeCount       = 0;
-let lastDayReset          = new Date().getUTCDate();
-let lastCycleCompletedAt  = 0;
+let peakPortfolioUsd = 0;
+let cycleCount = 0;
+let dailyTradeCount = 0;
+let lastDayReset = new Date().getUTCDate();
+let lastCycleCompletedAt = 0;
 
 interface OpenPosition {
-  tradeId:     bigint;
-  symbol:      string;
-  address:     Address;
-  direction:   "BUY" | "SELL";
-  entryPrice:  number;
-  sizeUsd:     number;
+  tradeId: bigint;
+  symbol: string;
+  address: Address;
+  direction: "BUY" | "SELL";
+  entryPrice: number;
+  sizeUsd: number;
   stopLossPct: number;
   takeProfitPct: number;
-  openedAt:    number;
+  openedAt: number;
 }
 
 const openPositions: Map<string, OpenPosition> = new Map();
@@ -43,7 +44,7 @@ function checkDayReset(): void {
   const today = new Date().getUTCDate();
   if (today !== lastDayReset) {
     dailyTradeCount = 0;
-    lastDayReset    = today;
+    lastDayReset = today;
     logger.info("Daily trade count reset");
   }
 }
@@ -76,7 +77,7 @@ async function checkExits(snapshot: ReturnType<typeof buildSnapshot> extends Pro
       const usdcAddr = TOKENS.USDC.address;
       const swapResult = await executeSwap({
         fromToken: pos.address,
-        toToken:   usdcAddr,
+        toToken: usdcAddr,
         amountUsd: pos.sizeUsd,
         slippagePct: 0.5,
       });
@@ -108,7 +109,7 @@ async function runCycle(): Promise<void> {
 
   logger.info("Portfolio", {
     current: `$${portfolioUsd.toFixed(2)}`,
-    peak:    `$${peakPortfolioUsd.toFixed(2)}`,
+    peak: `$${peakPortfolioUsd.toFixed(2)}`,
     openPositions: openPositions.size,
   });
 
@@ -130,7 +131,7 @@ async function runCycle(): Promise<void> {
   );
 
   const topCandidate = scorerOutput.topBuys[0] ?? scorerOutput.ranked[0]!;
-  const topToken     = snapshot.tokens.find((t) => t.symbol === topCandidate.symbol);
+  const topToken = snapshot.tokens.find((t) => t.symbol === topCandidate.symbol);
 
   const guardResult = topToken
     ? runGuards(topToken, portfolioUsd, peakPortfolioUsd, rsiMap[topToken.symbol] ?? 50)
@@ -138,8 +139,8 @@ async function runCycle(): Promise<void> {
 
   logger.info("Guard verdict", {
     verdict: verdictLabel(guardResult.verdict),
-    reason:  guardResult.reason,
-    flags:   guardResult.cautionFlags.toString(2).padStart(5, "0"),
+    reason: guardResult.reason,
+    flags: guardResult.cautionFlags.toString(2).padStart(5, "0"),
   });
 
   let oracleWritesThisCycle = 0;
@@ -180,11 +181,11 @@ async function runCycle(): Promise<void> {
   });
 
   logger.info("Trade decision", {
-    action:     decision.action,
-    symbol:     decision.symbol,
-    sizeUsd:    decision.sizeUsd,
+    action: decision.action,
+    symbol: decision.symbol,
+    sizeUsd: decision.sizeUsd,
     confidence: decision.confidence,
-    tag:        decision.strategyTag,
+    tag: decision.strategyTag,
   });
 
   if (decision.action !== "HOLD" && decision.symbol) {
@@ -203,8 +204,8 @@ async function runCycle(): Promise<void> {
 
     const swapResult = await executeSwap({
       fromToken: decision.action === "BUY" ? usdcAddr : tokenInfo.address,
-      toToken:   decision.action === "BUY" ? tokenInfo.address : usdcAddr,
-      amountUsd: Math.min(decision.sizeUsd, 500),
+      toToken: decision.action === "BUY" ? tokenInfo.address : usdcAddr,
+      amountUsd: Math.min(decision.sizeUsd, 500), // hard cap
       slippagePct: 0.5,
     });
 
@@ -214,7 +215,7 @@ async function runCycle(): Promise<void> {
     }
 
     const tokenSnapshot = snapshot.tokens.find((t) => t.symbol === decision.symbol);
-    const entryPrice    = tokenSnapshot?.price ?? 0;
+    const entryPrice = tokenSnapshot?.price ?? 0;
 
     const { logHash } = await logTradeOpen(
       decision,
@@ -227,24 +228,24 @@ async function runCycle(): Promise<void> {
     if (logHash) {
       dailyTradeCount++;
       openPositions.set(decision.symbol, {
-        tradeId:      0n,
-        symbol:       decision.symbol,
-        address:      tokenInfo.address,
-        direction:    decision.action as "BUY" | "SELL",
+        tradeId: 0n,
+        symbol: decision.symbol,
+        address: tokenInfo.address,
+        direction: decision.action as "BUY" | "SELL",
         entryPrice,
-        sizeUsd:      decision.sizeUsd,
-        stopLossPct:  decision.stopLossPct,
-        takeProfitPct:decision.takeProfitPct,
-        openedAt:     Date.now(),
+        sizeUsd: decision.sizeUsd,
+        stopLossPct: decision.stopLossPct,
+        takeProfitPct: decision.takeProfitPct,
+        openedAt: Date.now(),
       });
 
       logger.info("Position opened", {
-        symbol:    decision.symbol,
+        symbol: decision.symbol,
         direction: decision.action,
-        size:      `$${decision.sizeUsd}`,
-        entry:     entryPrice,
-        swapTx:    swapResult.txHash,
-        logTx:     logHash,
+        size: `$${decision.sizeUsd}`,
+        entry: entryPrice,
+        swapTx: swapResult.txHash,
+        logTx: logHash,
       });
     }
   }
@@ -258,7 +259,21 @@ async function runCycle(): Promise<void> {
 async function main(): Promise<void> {
   logger.info("SentinelTrader agent starting", {
     cycleInterval: AGENT.cycleIntervalSecs,
-    aiEnabled:     AGENT.aiEnabled,
+    aiEnabled: AGENT.aiEnabled,
+  });
+
+  const port = Number(process.env.PORT ?? 3000);
+  createServer((_req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      status: "running",
+      cycleCount,
+      lastCycleCompletedAt: lastCycleCompletedAt
+        ? new Date(lastCycleCompletedAt).toISOString()
+        : null,
+    }));
+  }).listen(port, () => {
+    logger.info("Health check server listening", { port });
   });
 
   await registerForCompetition();

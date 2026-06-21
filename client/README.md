@@ -1,75 +1,44 @@
-# React + TypeScript + Vite
+# SentinelTrader - client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite dashboard. Reads on-chain state directly (no backend) and renders live guard verdicts, trade history, and strategy signals.
 
-Currently, two official plugins are available:
+## Local setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+cp .env.example .env   # fill in deployed contract addresses
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+All variables are `VITE_`-prefixed (required for Vite to expose them client-side). See `.env.example`:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Variable | Purpose |
+|---|---|
+| `VITE_CHAIN_ID` | `56` mainnet / `97` testnet |
+| `VITE_BSC_RPC_URL` | RPC endpoint for reads |
+| `VITE_RISK_GUARD_ORACLE_ADDRESS` etc. | Deployed contract addresses from `contracts/` |
+
+## Deploying (Vercel)
+
+```bash
+npm install -g vercel
+vercel
 ```
+
+Or connect the repo in the Vercel dashboard:
+- Framework preset: **Vite**
+- Root directory: `client`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Set the `VITE_*` env vars in Vercel's project settings (Environment Variables tab) — they must be set there too, not just in your local `.env`, since Vercel doesn't read your local file
+
+`vercel.json` is already included with the SPA rewrite rule needed for client-side routing (so refreshing `/positions`, `/strategy`, etc. doesn't 404).
+
+## Pages
+
+- **Dashboard** — live guard verdicts grid, competition PnL, recent activity feed, agent liveness pulse
+- **Positions** — full trade history with on-chain tx links, filterable by open/closed
+- **Strategy** — RSI-sorted signal view across the watchlist
+- **Guard Log** — full per-token guard decision history with clickable BscScan links
